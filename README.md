@@ -34,6 +34,8 @@ pojemności K (K<N).
 
 • Istnieje pewna liczba osób (VIP) posiadająca bilety, które umożliwiają wejście na pokład
 samolotu z pominięciem kolejki oczekujących (ale nie mogą ominąć schodów pasażerskich).
+
+
 Samolot co określoną ilość czasu T1 (np.: pół godziny) wyrusza w podróż. Przed rozpoczęciem
 kołowania kapitan samolotu musi dopilnować aby na schodach pasażerskich nie było żadnego
 wchodzącego pasażera. Jednocześnie musi dopilnować by liczba pasażerów w samolocie nie
