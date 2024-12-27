@@ -1,0 +1,27 @@
+OBJS = semafor.o komunikat.o pamiec.o
+HDRS = semafor.h komunikat.h pamiec.h
+
+all: start pasazer
+
+start: start.o $(OBJS)
+	gcc -o start start.o $(OBJS)
+start.o: start.c $(HDRS)
+	gcc -c start.c
+
+pasazer: pasazer.o $(OBJS)
+	gcc -o pasazer pasazer.o $(OBJS)
+pasazer.o: pasazer.c $(HDRS)
+	gcc -c pasazer.c
+
+semafor.o: semafor.c
+	gcc -c semafor.c
+komunikat.o: komunikat.c
+	gcc -c komunikat.c
+pamiec.o: pamiec.c
+	gcc -c pamiec.c
+
+lunch:
+	./start
+
+clear:
+	rm -v *.o
