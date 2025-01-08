@@ -2,14 +2,23 @@
 #include <stdlib.h>
 #include "komunikat.h"
 
-int kolejka_init(key_t key, int flag){
-  int msqid = msgget(key, flag);
+key_t get_key(char* path, char id){
+  key_t key = ftok(path, id);
+  if(key == -1){
+    perror("komunikat.c | ftok | ");
+    exit(1);
+  }
+  return key;
+}
 
-  if (msqid == -1){
+int kolejka_init(key_t key, int flag){
+  int msgid = msgget(key, flag);
+
+  if (msgid == -1){
     perror("kominikat.c | kolejka_init | ");
     exit(2);
   }
-  return msqid;
+  return msgid;
 }
 
 int kolejka_send(int msqid, void *msg, size_t len){
