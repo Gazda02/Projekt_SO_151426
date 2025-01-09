@@ -2,11 +2,21 @@
 #define KOMUNIKAT_H
 
 #include <sys/msg.h>
-#define RADIO_TYPE 101
-struct radio{
-  long mtype;
-  int dane;
-};
+//samolot-obsluga
+#define RADIO_TAXIING 101
+#define RADIO_READY 102
+#define RADIO_TAKEOFF 103
+typedef struct{
+  long radioType;
+  int data;
+} Radio;
+
+//samolot-pasazer
+#define GET_SEAT 11
+typedef struct {
+  long type;
+  int pid;
+} AirHostess;
 
 key_t get_key(char* path, char id);
 int kolejka_init(key_t key, int flag);

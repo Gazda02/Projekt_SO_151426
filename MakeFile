@@ -1,7 +1,7 @@
 OBJS = semafor.o komunikat.o pamiec.o
-HDRS = semafor.h komunikat.h pamiec.h
+HDRS = semafor.h komunikat.h pamiec.h params.h
 
-all: start pasazer kapitan
+all: start pasazer kapitan dyspozytor
 
 start: start.o $(OBJS)
 	gcc -o start start.o $(OBJS)
@@ -13,10 +13,15 @@ pasazer: pasazer.o $(OBJS)
 pasazer.o: pasazer.c $(HDRS)
 	gcc -c pasazer.c
 
-kapitan: kapitan.o
-	gcc -o kapitan kapitan.o
-kapitan.o: kapitan.c
+kapitan: kapitan.o $(OBJS)
+	gcc -o kapitan kapitan.o $(OBJS)
+kapitan.o: kapitan.c $(HDRS)
 	gcc -c kapitan.c
+
+dyspozytor: dyspozytor.o $(OBJS)
+	gcc -o dyspozytor dyspozytor.o $(OBJS)
+dyspozytor.o: dyspozytor.c $(HDRS)
+	gcc -c dyspozytor.c
 
 semafor.o: semafor.c
 	gcc -c semafor.c
