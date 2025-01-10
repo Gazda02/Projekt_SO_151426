@@ -9,6 +9,7 @@
 int main(int argc, char *argv[]) {
   //inicjalizacja zmiennych
   int semid, msgid, masa_bagazu, is_vip, kontrabanda;
+  int my_pid = getpid();
   AirHostess airHostess_msg;
 
   //ustawianie zmiennych
@@ -22,7 +23,7 @@ int main(int argc, char *argv[]) {
   masa_bagazu = rand() % MAX_MASA_BAGAZU;
 
   airHostess_msg.type = GET_SEAT;
-  airHostess_msg.pid = getpid();
+  airHostess_msg.pid = my_pid;
 
   //inicjalizacja IPC
   semid = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | 0600);
@@ -30,12 +31,20 @@ int main(int argc, char *argv[]) {
 
   //printf("Pasazer %d: start\n", getpid());
 
-  //printf("sem TO_PLANE\n");
-  //fflush(stdout);
+  printf("sem TO_PLANE\n");
+  printf("Pasazer: TO_PLANE ustawione na %d\n", sem_getval(semid, TO_PLANE));
+  fflush(stdout);
   sem_wait(semid, TO_PLANE);
+
+  printf("sem TO_STAIRS\n");
+  fflush(stdout);
   sem_wait(semid, TO_STAIRS);
   kolejka_send(msgid, &airHostess_msg, sizeof(airHostess_msg.pid));
-  sem_wait(semid, TO_SEAT);
+
+  printf("sem TO_SEAT\n");
+  fflush(stdout);
+  //sem_wait(semid, TO_SEAT);
+  kolejka_recv(msgid, &airHostess_msg, sizeof(airHostess_msg.pid), my_pid);
   printf("Siedze\n");
   fflush(stdout);
 

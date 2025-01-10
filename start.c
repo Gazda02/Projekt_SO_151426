@@ -20,6 +20,7 @@ int msgID, shmID, semID;
 int main(){
   //inicjalizacja zmiennych
   int ilosc_pasazerow, ilosc_samolotow, ilosc_VIP, ilosc_miejsc, i;
+  int *shm;
   char isVip;
 
   //obsługa Ctrl+C
@@ -31,16 +32,21 @@ int main(){
 
   //pobieranie parametrów startowych
   //init_airport(&ilosc_pasazerow, &ilosc_VIP, &ilosc_samolotow, &ilosc_miejsc);
-  ilosc_pasazerow = 10;
+  ilosc_pasazerow = 12;
   ilosc_VIP = 0;
   ilosc_samolotow = 2;
   ilosc_miejsc = 5;
 
   //inicjalizacja IPC
   msgID = kolejka_init(get_key(".", 'K'), IPC_CREAT | IPC_EXCL | 0600);
-  shmID = pamiec_init(get_key(".", 'M'), ilosc_samolotow*ilosc_miejsc*sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+  shmID = pamiec_init(get_key(".", 'M'), (ilosc_samolotow*ilosc_miejsc+1)*sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
   semID = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | IPC_EXCL | 0600);
+
+  //ustawianie IPC
   for(i=0; i<SEM_NUM; i++) sem_setval(semID, i, 0);
+  shm = pamiec_add(shmID);
+  if(ilosc_VIP != 0) shm[ilosc_samolotow*ilosc_miejsc] = ilosc_pasazerow + ilosc_VIP;
+  else shm[ilosc_samolotow*ilosc_miejsc] = ilosc_pasazerow;
 
   //start procesów
   isVip = '0';
@@ -89,11 +95,11 @@ void thread_pas(int pasCount, char* isVip){
 }
 
 void thread_plane(int planeCount, int planesSize){
-  char planeSize[3];
+  char planeSize[11];
   char planeNum[11];
-  char shmSize[5];
+  char shmSize[12];
   sprintf(planeSize, "%d", planesSize);
-  sprintf(shmSize, "%d", planesSize*planeCount);
+  sprintf(shmSize, "%d", planesSize*planeCount+1);
 
   for(int i=0; i < planeCount; i++){
     switch(fork()){
