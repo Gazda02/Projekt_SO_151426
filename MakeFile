@@ -1,7 +1,7 @@
 OBJS = semafor.o komunikat.o pamiec.o
 HDRS = semafor.h komunikat.h pamiec.h params.h
 
-all: start pasazer kapitan dyspozytor
+all: start pasazer kapitan dyspozytor odprawa
 
 start: start.o $(OBJS)
 	gcc -o start start.o $(OBJS)
@@ -22,6 +22,11 @@ dyspozytor: dyspozytor.o $(OBJS)
 	gcc -o dyspozytor dyspozytor.o $(OBJS)
 dyspozytor.o: dyspozytor.c $(HDRS)
 	gcc -c dyspozytor.c
+
+odprawa: odprawa.o $(OBJS)
+	gcc -o odprawa odprawa.o $(OBJS)
+odprawa.o: odprawa.c $(HDRS)
+	gcc -c odprawa.c
 
 semafor.o: semafor.c
 	gcc -c semafor.c

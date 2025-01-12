@@ -13,9 +13,10 @@ void init_airport(int* pas, int* pasVip, int* plane, int* planesSize);
 void thread_pas(int pasCount, char* isVip);
 void thread_plane(int planeCount, int planesSize);
 void thread_dispatcher();
+void thread_check();
 void koniec(int signal);
 
-int msgID, shmID, semID;
+int msgID, msqid_ci, shmID, semID;
 
 int main(){
   //inicjalizacja zmiennych
@@ -39,6 +40,7 @@ int main(){
 
   //inicjalizacja IPC
   msgID = kolejka_init(get_key(".", 'K'), IPC_CREAT | IPC_EXCL | 0600);
+  //msqid_ci = kolejka_init(get_key(".", 'C'), IPC_CREAT | IPC_EXCL | 0600);
   shmID = pamiec_init(get_key(".", 'M'), (ilosc_samolotow*ilosc_miejsc+1)*sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
   semID = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | IPC_EXCL | 0600);
 
@@ -55,6 +57,7 @@ int main(){
   thread_pas(ilosc_VIP, &isVip);
   thread_plane(ilosc_samolotow, ilosc_miejsc);
   thread_dispatcher();
+  thread_check();
 
   for(i=0; i<ilosc_pasazerow+ilosc_VIP; i++) wait(NULL);
   koniec(0);
@@ -134,6 +137,23 @@ void thread_dispatcher(){
 
     default:
         NULL;
+  }
+}
+
+void thread_check(){
+  switch(fork()){
+    case -1:
+      perror("start.c | Kontrola | fork | ");
+      exit(1);
+
+    case 0:
+      if (execl("./odprawa", "odprawa", NULL) == -1){
+        perror("start.c | Kontrola | execl | ");
+        exit(2);
+      }
+
+  	default:
+		NULL;
   }
 }
 

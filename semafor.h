@@ -11,6 +11,8 @@ void sem_setval(int semid, int semnum, int semval);
 int sem_getval(int semid, int semnum);
 int sem_getwait(int semid, int semnum);
 void sem_wait(int semid, int semnum);
-int sem_remove(int semid, int semnum);
+int sem_nowait(int semid, int semnum);
+int sem_new_plane(int semid, int semnum);
+void sem_remove(int semid, int semnum);
 
 #endif //SEMAFORS_H

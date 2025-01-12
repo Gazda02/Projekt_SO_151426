@@ -42,7 +42,7 @@ void sem_wait(int semid, int semnum){
   struct sembuf operacje[1];
   operacje[0].sem_num = semnum;
   operacje[0].sem_op = -1;
-  operacje[0].sem_flg = SEM_UNDO;
+  operacje[0].sem_flg = 0;
 
   if (semop(semid, operacje, 1) == -1)
   {
@@ -51,8 +51,25 @@ void sem_wait(int semid, int semnum){
   }
 }
 
-int sem_remove(int semid, int num_of_sem){
+int sem_nowait(int semid, int semnum){
+  struct sembuf operacje[1];
+  operacje[0].sem_num = semnum;
+  operacje[0].sem_op = -1;
+  operacje[0].sem_flg = IPC_NOWAIT;
+
+  return semop(semid, operacje, 1);
+}
+
+int sem_new_plane(int semid, int semnum){
+  struct sembuf operacje[1];
+  operacje[0].sem_num = semnum;
+  operacje[0].sem_op = 0;
+  operacje[0].sem_flg = IPC_NOWAIT;
+
+  return semop(semid, operacje, 1);
+}
+
+void sem_remove(int semid, int num_of_sem){
   int result = semctl(semid, num_of_sem, IPC_RMID, NULL);
   if (result == -1) perror("semafor.c | semafor_remove | ");
-  return result;
 }

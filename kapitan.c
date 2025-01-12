@@ -54,7 +54,6 @@ int main(int argc, char *argv[]){
     kolejka_recv(msgid, &radio_null, sizeof(radio_msg.data), RADIO_TAXIING);
     kolejka_send(msgid, &radio_msg, sizeof(radio_msg.data));
 
-    printf("pas left ==> %d\n", passengers[pas_no]);
     if(passengers[pas_no] == 0){
       radio_takeoff(true);
       exit(0);
@@ -63,65 +62,52 @@ int main(int argc, char *argv[]){
     fflush(stdout);
 
     printf("Kapitan %d: otwieram bramki\n", pilot_no);
-    printf("Kapitan %d: TO_PLANE ustawione na %d ilosc mnisjsc -> %d\n", pilot_no, sem_getval(semid, TO_PLANE), ilosc_miejsc);
-
     fflush(stdout);
     sem_setval(semid, TO_STAIRS, poj_schody);
     sleep(1);
     sem_setval(semid, TO_PLANE, ilosc_miejsc);
-
-    printf("Kapitan %d: TO_PLANE ustawione na %d ilosc mnisjsc -> %d\n", pilot_no, sem_getval(semid, TO_PLANE), ilosc_miejsc);
-
 
     seat = shm_index;
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
     while(current_time.tv_sec - start_time.tv_sec < DEPARTURE_DURATION){
       if (sem_getval(semid, TO_STAIRS) == 0){
-        sleep(1);
         assign_seats();
         sem_setval(semid, TO_STAIRS, poj_schody);
       }
       clock_gettime(CLOCK_MONOTONIC, &current_time);
     }
-    sleep(1);
+
+    if(sem_getval(semid, TO_PLANE) > 0) sem_setval(semid, TO_PLANE, 0);
+    sem_setval(semid, TO_STAIRS, 0);
     assign_seats();
+    for(int i=shm_index; i<seat; i++) {printf("%d, ", passengers[i]);} //tmp
 
     if(seat-shm_index > ilosc_miejsc) {
       printf("Kapitan %d: samolot przeladowany\n", pilot_no);
       exit(1);
     }
-    printf("Kapitan %d: TO_PLANE ustawione na %d\n", pilot_no, sem_getval(semid, TO_PLANE));
     if(sem_getwait(semid, TO_SEAT) != 0) printf("Kapitan %d: ktos jest na chodach\n", pilot_no);
     passengers[pas_no] -= seat-shm_index;
-    if(sem_getval(semid, TO_PLANE) > 0) sem_setval(semid, TO_PLANE, 0);
-    if(sem_getval(semid, TO_STAIRS) > 0) sem_setval(semid, TO_STAIRS, 0);
     radio_takeoff(false);
-    printf("Kapitan %d: TO_PLANE ustawione na %d\n", pilot_no, sem_getval(semid, TO_PLANE));
 
     for(int i=shm_index; i<seat; i++) {kill(passengers[i], SIGTERM); passengers[i] = 0;}
     sleep(10);
   }
 }
 
-
+//do przeróbki
 void assign_seats() {
   AirHostess airHostess_msg;
-  int waiting_pas = kolejka_count(msgid, GET_SEAT);
-  printf("Kapitan %d: waiting pas => %d\n", pilot_no, waiting_pas);
-  fflush(stdout);
   int pid;
 
-  for(int i=0; i<waiting_pas; i++){
-    kolejka_recv(msgid, &airHostess_msg, sizeof(airHostess_msg.pid), GET_SEAT);
+  while(kolejka_recv_noblock(msgid, &airHostess_msg, sizeof(airHostess_msg.pid), GET_SEAT) != -1){
     pid = airHostess_msg.pid;
     passengers[seat] = pid;
     airHostess_msg.type = pid;
     kolejka_send(msgid, &airHostess_msg, sizeof(airHostess_msg.pid));
     seat++;
   }
-
-  //sem_setval(semid, TO_SEAT, waiting_pas);
 }
 
 void radio_takeoff(bool is_finish) {

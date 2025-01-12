@@ -33,6 +33,10 @@ int kolejka_recv(int msqid, void *msg, size_t len, long int type){
   return result;
 }
 
+int kolejka_recv_noblock(int msqid, void *msg, size_t len, long int type){
+  return msgrcv(msqid, msg, len, type, IPC_NOWAIT);
+}
+
 int kolejka_count(int msqid, long int type){
   struct msqid_ds buf;
 
