@@ -36,8 +36,8 @@ int main(int argc, char *argv[]){
   poj_schody = 2; //ilosc_miejsc % 10 + 5;
 
   //ustawianie zmiennych p2
-  srand(time(NULL));
-  max_masa_bagazu = rand() % (MAX_MASA_BAGAZU-MIN_MASA_BAGAZU) + MIN_MASA_BAGAZU;
+  //TODO lepsze losowanie
+  max_masa_bagazu = 101;//getpid() % (MAX_MASA_BAGAZU-MIN_MASA_BAGAZU) + MIN_MASA_BAGAZU;
 
   //inicjalizacja IPC
   shmid = pamiec_init(get_key(".", 'M'), (pas_no+1)*sizeof(int), IPC_CREAT | 0600);
@@ -51,52 +51,71 @@ int main(int argc, char *argv[]){
   while(1){
     radio_msg.radioType = RADIO_READY;
     radio_msg.data = max_masa_bagazu;
-    kolejka_recv(msgid, &radio_null, sizeof(radio_msg.data), RADIO_TAXIING);
-    kolejka_send(msgid, &radio_msg, sizeof(radio_msg.data));
 
+    //czeka na pozwolenie na podstawienie sie
+    kolejka_recv(msgid, &radio_null, sizeof(radio_msg.data), RADIO_TAXIING);
+
+    //to sie zobaczy
     if(passengers[pas_no] == 0){
       radio_takeoff(true);
       exit(0);
     }
     printf("Kapitan %d: ustawia sie\n", pilot_no);
     fflush(stdout);
-
     printf("Kapitan %d: otwieram bramki\n", pilot_no);
     fflush(stdout);
+
+    //otwarcie bramek oraz wyslanie inforamcji o masie bagazu
     sem_setval(semid, TO_STAIRS, poj_schody);
-    sleep(1);
     sem_setval(semid, TO_PLANE, ilosc_miejsc);
+    kolejka_send(msgid, &radio_msg, sizeof(radio_msg.data));
 
     seat = shm_index;
 
+    //czeka na pasazerow przez okreslony czas
     clock_gettime(CLOCK_MONOTONIC, &start_time);
     while(current_time.tv_sec - start_time.tv_sec < DEPARTURE_DURATION){
+
+      //jesli schody sie zapelnia to wpuszczamy pasazerow i na nowo otwieramy schody
       if (sem_getval(semid, TO_STAIRS) == 0){
         assign_seats();
         sem_setval(semid, TO_STAIRS, poj_schody);
       }
-      clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+      clock_gettime(CLOCK_MONOTONIC, &current_time); //do obslugi czasu
     }
 
+    //zamkniecie wyszyskich bramek
     if(sem_getval(semid, TO_PLANE) > 0) sem_setval(semid, TO_PLANE, 0);
     sem_setval(semid, TO_STAIRS, 0);
-    assign_seats();
-    for(int i=shm_index; i<seat; i++) {printf("%d, ", passengers[i]);} //tmp
 
+    //posadzenie ostatnich pasazerow
+    assign_seats();
+
+    //tmp
+    for(int i=shm_index; i<seat; i++) {printf("%d, ", passengers[i]);}
+
+    //sprawdzamy czy kazdy ma miejsce
     if(seat-shm_index > ilosc_miejsc) {
       printf("Kapitan %d: samolot przeladowany\n", pilot_no);
       exit(1);
     }
+    //sprawdzamy czy nikt nie jest na schodach
     if(sem_getwait(semid, TO_SEAT) != 0) printf("Kapitan %d: ktos jest na chodach\n", pilot_no);
+
+    //zmniejszenie liczby pozostalych pasazerow
     passengers[pas_no] -= seat-shm_index;
+
+    //wyslanie informacji o odlocie
     radio_takeoff(false);
 
+    //wykonanie lotu
     for(int i=shm_index; i<seat; i++) {kill(passengers[i], SIGTERM); passengers[i] = 0;}
-    sleep(10);
+    sleep(10); //czas lotu
   }
 }
 
-//do przeróbki
+//rozdysponowanie miejsc
 void assign_seats() {
   AirHostess airHostess_msg;
   int pid;

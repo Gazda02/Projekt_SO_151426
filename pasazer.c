@@ -21,9 +21,10 @@ int main(int argc, char *argv[]) {
   }
   is_vip = atoi(argv[1]);
 
-  srand(time(NULL));
-  masa_bagazu = rand() % MAX_MASA_BAGAZU;
+  //wylosowanie masy bagazu
+  masa_bagazu = my_pid % (MAX_MASA_BAGAZU - MIN_MASA_BAGAZU);
 
+  //komunikaty - DO POPRAWY
   checkIn_msg.type = CHECK_IN;
   checkIn_msg.pas_pid = my_pid;
   checkIn_msg.lug_wt = masa_bagazu;
@@ -39,51 +40,56 @@ int main(int argc, char *argv[]) {
   msqid_ci = kolejka_init(get_key(".", 'C'), IPC_CREAT | 0600);
 
   while(1){
+    //wersja dla nie VIP
     if(is_vip == 0) {
-      kolejka_send(msqid_ci, &checkIn_msg, sizeof(checkIn_msg.lug_wt) + sizeof(checkIn_msg.pas_pid));
-      kolejka_recv(msqid_ci, &radio_msg, sizeof(checkIn_msg.lug_wt), my_pid);
-      if(checkIn_msg.lug_wt == 0) continue;
-      printf("IDEEE\n");
 
-      //printf("sem TO_PLANE\n");
-      //fflush(stdout);
-      if(sem_nowait(semid, TO_PLANE) == -1){
-        kolejka_send(msqid, &radio_msg, sizeof(radio_msg.radioType));
-        printf("wracam\n");
-        kolejka_recv(msqid, &radio_null, sizeof(radio_null.radioType), RADIO_UNLUCKY);
-        continue;
-      }
-      printf("IDEEE2\n");
+      //zakolekowanie siebie do odprawy bagazowej
+      kolejka_send(msqid_ci, &checkIn_msg, sizeof(checkIn_msg.lug_wt) + sizeof(checkIn_msg.pas_pid));
+      kolejka_recv(msqid_ci, &radio_msg, sizeof(radio_msg.data), my_pid);
+      //powrot na poczatek kolejki
+      if(radio_msg.data == 0) continue;
 
       //TODO kontrola bezpieczeństwa
-    }
-    else sem_wait(semid, TO_PLANE);
 
-    //printf("sem TO_STAIRS\n");
-    //fflush(stdout);
+      //jeśli nie zdążyło się na samolot - powrot na poczatek odprawy
+      if(sem_nowait(semid, TO_PLANE) == -1){
+        radio_msg.radioType = RADIO_WAIT;
+        kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
+        kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_UNLUCKY);
+        sleep(3);
+        continue;
+      }
+    }
+    else sem_wait(semid, TO_PLANE); // dla VIP
+
+    //to jest zeby pasazer wrocil na poczatek jezeli samolot odleci
     if(sem_nowait(semid, TO_STAIRS) == -1){
       decision = 1;
+      //wysyla komunikat ze czeka
       kolejka_send(msqid, &radio_msg, sizeof(radio_msg.radioType));
 
+      //czeka do poki semafor jest opuszczony
       while(sem_nowait(semid, TO_STAIRS) == -1){
-        if(kolejka_recv_noblock(msqid, &radio_null, sizeof(radio_null.radioType), RADIO_UNLUCKY) == 0) decision = 0;
+        if(kolejka_recv_noblock(msqid, &radio_null, sizeof(radio_null.radioType), RADIO_UNLUCKY) == 0){
+          decision = 0;
+          break;
+        }
       }
 
-      if(!decision) continue;
+      //jezeli dostal komunikat UNLUCKY wraca na poczatek
+      if(decision == 0) continue;
+      //jezeli nie dostal komunikatu sam go odbiera zeby nie smiecic w kolejce
       kolejka_recv(msqid, &radio_null, sizeof(radio_null.radioType), RADIO_WAIT);
-      printf("Ide dalej!!!\n");
-      fflush(stdout);
     }
 
+    //wyslanie porsby o miejsce
     kolejka_send(msqid, &airHostess_msg, sizeof(airHostess_msg.pid));
-
-    //printf("sem TO_SEAT\n");
-    //fflush(stdout);
-    //sem_wait(semid, TO_SEAT);
+    //potwierdzenie otrzymania miejsce - opcjonalne
     kolejka_recv(msqid, &airHostess_msg, sizeof(airHostess_msg.pid), my_pid);
-    printf("Siedze\n");
+    printf("Pasazer %d: Wsiadl\n", my_pid);
     fflush(stdout);
 
+    //czeka na koniec podrozy
     while(1){}
   }
 }
