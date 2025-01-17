@@ -12,15 +12,15 @@ int main(){
   CheckIn checkin_msg;
 
   //inicjalizacja IPC
-  msqid = kolejka_init(get_key(".", 'K'), IPC_CREAT | 0600);
-  msqid_ci = kolejka_init(get_key(".", 'C'), IPC_CREAT | 0600);
-  semid = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | 0600);
+  msqid = kolejka_init(get_key('K'), IPC_CREAT | 0600);
+  msqid_ci = kolejka_init(get_key('C'), IPC_CREAT | 0600);
+  semid = sem_init(get_key('S'), SEM_NUM, IPC_CREAT | 0600);
 
   //ustawianie zmiennych
   msg_size = sizeof(checkin_msg.lug_wt) + sizeof(checkin_msg.pas_pid);
 
   //pobranie masy bagazu
-  kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY, 'O');
+  kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY);
   aktualna_masa_bagazu = radio_msg.data;
   printf("Odprawa: Start\n");
 
@@ -40,9 +40,8 @@ int main(){
 
     //sprawdzenie czy nie podstawia nie nowy samolot
     if(sem_nowait(semid, CHECKS) != -1) {
-      kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY, 'O');
+      kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY);
       aktualna_masa_bagazu = radio_msg.data;
-      //sleep(2);
       printf("Odprawa: Nowa masa bagazu -> %d\n", aktualna_masa_bagazu);
       fflush(stdout);
     }

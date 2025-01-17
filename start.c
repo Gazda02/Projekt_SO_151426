@@ -40,10 +40,10 @@ int main(){
   ilosc_miejsc = 5;
 
   //inicjalizacja IPC
-  msgID = kolejka_init(get_key(".", 'K'), IPC_CREAT | IPC_EXCL | 0600);
-  msqid_ci = kolejka_init(get_key(".", 'C'), IPC_CREAT | IPC_EXCL | 0600);
-  shmID = pamiec_init(get_key(".", 'M'), (ilosc_samolotow*ilosc_miejsc+1)*sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
-  semID = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | IPC_EXCL | 0600);
+  msgID = kolejka_init(get_key('K'), IPC_CREAT | IPC_EXCL | 0600);
+  msqid_ci = kolejka_init(get_key('C'), IPC_CREAT | IPC_EXCL | 0600);
+  shmID = pamiec_init(get_key('M'), (ilosc_samolotow*ilosc_miejsc+1)*sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+  semID = sem_init(get_key('S'), SEM_NUM, IPC_CREAT | IPC_EXCL | 0600);
 
   //ustawianie IPC
   for(i=0; i<SEM_NUM; i++) sem_setval(semID, i, 0);

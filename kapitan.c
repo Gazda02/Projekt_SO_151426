@@ -52,9 +52,9 @@ int main(int argc, char *argv[]){
   max_masa_bagazu = 101;//rand_int % (MAX_MASA_BAGAZU-MIN_MASA_BAGAZU) + MIN_MASA_BAGAZU;
 
   //inicjalizacja IPC
-  shmid = pamiec_init(get_key(".", 'M'), (pas_no+1)*sizeof(int), IPC_CREAT | 0600);
-  semid = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | 0600);
-  msgid = kolejka_init(get_key(".", 'K'), IPC_CREAT | 0600);
+  shmid = pamiec_init(get_key('M'), (pas_no+1)*sizeof(int), IPC_CREAT | 0600);
+  semid = sem_init(get_key('S'), SEM_NUM, IPC_CREAT | 0600);
+  msgid = kolejka_init(get_key('K'), IPC_CREAT | 0600);
   passengers = pamiec_add(shmid);
 
   printf("Kapitan %d: start\n", pilot_no);
@@ -66,15 +66,15 @@ int main(int argc, char *argv[]){
     radio_msg.data = max_masa_bagazu;
 
     //czeka na pozwolenie na podstawienie sie
-    kolejka_recv(msgid, &radio_null, sizeof(radio_msg.data), RADIO_TAXIING, 'K');
+    kolejka_recv(msgid, &radio_null, sizeof(radio_msg.data), RADIO_TAXIING);
 
     //to sie zobaczy
     if(passengers[pas_no] == 0){
       radio_takeoff(true);
       exit(0);
     }
-    printf("Kapitan %d: ustawia sie\n", pilot_no);
-    printf("Kapitan %d: otwieram bramki\n", pilot_no);
+    printf("Kapitan %d: Ustawia sie\n", pilot_no);
+    printf("Kapitan %d: Otwieram bramki\n", pilot_no);
     fflush(stdout);
 
     //otwarcie bramek oraz wyslanie inforamcji o masie bagazu
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
 
     //sprawdzamy czy kazdy ma miejsce
     if(seat-shm_index > ilosc_miejsc) {
-      printf("Kapitan %d: samolot przeladowany\n", pilot_no);
+      printf("Kapitan %d: Samolot przeladowany\n", pilot_no);
       exit(1);
     }
 
@@ -139,8 +139,8 @@ void assign_seats() {
 }
 
 void radio_takeoff(bool is_finish) {
-  if(is_finish) printf("Kapitan %d: zakonczyl prace\n", pilot_no);
-  else printf("Kapitan %d: odlatuje z %d pasazerami\n", pilot_no, seat-shm_index);
+  if(is_finish) printf("Kapitan %d: Zakonczyl prace\n", pilot_no);
+  else printf("Kapitan %d: Odlatuje z %d pasazerami\n", pilot_no, seat-shm_index);
 
   fflush(stdout);
   radio_msg.radioType = RADIO_TAKEOFF;

@@ -29,14 +29,14 @@ int main(){
   pthread_t security[3];
   Radio radio_null;
 
-  msqid = kolejka_init(get_key(".", 'K'), IPC_CREAT | 0600);
-  semid = sem_init(get_key(".", 'S'), SEM_NUM, IPC_CREAT | 0600);
+  msqid = kolejka_init(get_key('K'), IPC_CREAT | 0600);
+  semid = sem_init(get_key('S'), SEM_NUM, IPC_CREAT | 0600);
 
   size = 3 * sizeof(int);
   is_new_plane = 0;
   is_airport_open = 1;
 
-  kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2, 'C');
+  kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2);
   sleep(1);
 
   for(int i = 0; i < 3; i++) {
@@ -54,9 +54,9 @@ int main(){
 
       for(int i = 0; i < 3; i++) send_everyone_back(i);
 
-      kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2, 'C');
+      kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2);
       is_new_plane = 0;
-      printf("Kontrola osobista: restart\n");
+      //printf("Kontrola osobista: Restart\n");
       fflush(stdout);
     }
   }
@@ -79,8 +79,6 @@ void *security_check(void *arg) {
       pas_l[pas_count] = pas_tmp;
       pas_count++;
     }
-    //printf("pas_count: %d\n", pas_count);
-    for(int i = 0; i < pas_count; i++){printf("pas.pid: %d\n", pas_l[i].pid);}
 
     //dla pobranych dwoch pasazerow
     if(pas_count == 2) {
@@ -111,22 +109,15 @@ void *security_check(void *arg) {
       }
       //gdy nie ma czekajacej osoby
       else {
-        printf("2\n");
-        fflush(stdout);
+
         //gdy nowopobrani pasazerowie sa tej samej plci
-        if (pas_l[0].sex == pas_l[1].sex) {
-          printf("sex1 = %d, sex2 = %d\n", pas_l[0].sex, pas_l[1].sex);
-          fflush(stdout);
-          for (int i = 0; i < 2; i++) check(&pas_l[i]);
-        }
+        if (pas_l[0].sex == pas_l[1].sex) for (int i = 0; i < 2; i++) check(&pas_l[i]);
         //gdy nie sa tej samej plci
         else {
-          printf("3\n");
-          fflush(stdout);
+
           //gdy uda sie pobrac kolejnego pasazera
           if(kolejka_recv_noblock(msqid, &pas, size , PRIVATE_SEARCH + *my_num) != -1) {
-            printf("dobieram\n");
-            fflush(stdout);
+            //printf("Kontrola %d: Dobiera pasazera\n", *my_num);
             //sprawdzenie z kim nowy pasazer dzieli plec
             if(pas_l[0].sex == pas.sex) {
               check(&pas_l[0]);
@@ -153,6 +144,7 @@ void *security_check(void *arg) {
 
       if(waiting_pas.pid != 0 && waiting_pas.cut_count > 1) {
         sleep(1);
+        //printf("Kontrola %d: Puszcza pasazera %ld, ktory dlugo czeka\n", *my_num, waiting_pas.pid);
         check_waiting(&waiting_pas);
       }
 
@@ -190,7 +182,7 @@ void check(P_Search *pas) {
   radio_msg.radioType = pas->pid;
   radio_msg.data = pas->contraband ? 0 : 1;
   kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
-  printf("kontrola -> %d -> %d\n", pas->pid, radio_msg.data);
+  //printf("Kontrola osobista pasazera %d -> %d\n", pas->pid, radio_msg.data);
 }
 
 void check_waiting(Waiting *waiting_pas) {
@@ -198,12 +190,11 @@ void check_waiting(Waiting *waiting_pas) {
   radio_msg.radioType = waiting_pas->pid;
   radio_msg.data = waiting_pas->contraband ? 0 : 1;
   kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
-  printf("kontrola W -> %ld -> %d\n", waiting_pas->pid, radio_msg.data);
+  //printf("Kontrola osobista oczekujacego pasazera %ld -> %d\n", waiting_pas->pid, radio_msg.data);
   waiting_pas->pid = 0;
 }
 
 void make_waiting(P_Search *pas, Waiting *waiting_pas) {
-  printf("new w -> %d, old w -> %ld\n", pas->pid, waiting_pas->pid);
   waiting_pas->pid = pas->pid;
   waiting_pas->contraband = pas->contraband;
   waiting_pas->sex = pas->sex;
@@ -221,7 +212,7 @@ void send_everyone_back(int post_num) {
     kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
     i++;
   }
-  printf("wrocilo %d pasazerow\n", i);
+  printf("Kontrola %d: Odeslano %d pasazerow\n", post_num, i);
 }
 
 void send_waiting_back(Waiting *waiting_pas) {
@@ -229,6 +220,5 @@ void send_waiting_back(Waiting *waiting_pas) {
   radio_msg.radioType = waiting_pas->pid;
   radio_msg.data = -1;
   kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
-  printf("%ld wraca\n", waiting_pas->pid);
   waiting_pas->pid = 0;
 }
