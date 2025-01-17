@@ -14,6 +14,7 @@ void thread_pas(int pasCount, char* isVip);
 void thread_plane(int planeCount, int planesSize);
 void thread_dispatcher();
 void thread_check();
+void thread_check2();
 void koniec(int signal);
 
 int msgID, msqid_ci, shmID, semID;
@@ -58,6 +59,7 @@ int main(){
   thread_plane(ilosc_samolotow, ilosc_miejsc);
   thread_dispatcher();
   thread_check();
+  thread_check2();
 
   for(i=0; i<ilosc_pasazerow+ilosc_VIP; i++) wait(NULL);
   koniec(0);
@@ -143,12 +145,29 @@ void thread_dispatcher(){
 void thread_check(){
   switch(fork()){
     case -1:
-      perror("start.c | Kontrola | fork | ");
+      perror("start.c | Odprawa | fork | ");
       exit(1);
 
     case 0:
       if (execl("./odprawa", "odprawa", NULL) == -1){
-        perror("start.c | Kontrola | execl | ");
+        perror("start.c | Odprawa | execl | ");
+        exit(2);
+      }
+
+  	default:
+		NULL;
+  }
+}
+
+void thread_check2(){
+  switch(fork()){
+    case -1:
+      perror("start.c | Kontrola osobista | fork | ");
+      exit(1);
+
+    case 0:
+      if (execl("./kontrola_osobista", "kontrola_osobista", NULL) == -1){
+        perror("start.c | Kontrola osobista | execl | ");
         exit(2);
       }
 
@@ -158,6 +177,7 @@ void thread_check(){
 }
 
 void koniec(int sig){
+  kill(0, sig);
   kolejka_remove(msgID);
   kolejka_remove(msqid_ci);
   pamiec_remove(shmID);

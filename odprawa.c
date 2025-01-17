@@ -20,7 +20,7 @@ int main(){
   msg_size = sizeof(checkin_msg.lug_wt) + sizeof(checkin_msg.pas_pid);
 
   //pobranie masy bagazu
-  kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY);
+  kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY, 'O');
   aktualna_masa_bagazu = radio_msg.data;
   printf("Odprawa: Start\n");
 
@@ -34,14 +34,15 @@ int main(){
       radio_msg.radioType = checkin_msg.pas_pid;
 
       //przekazanie decyzji pasazerowi
-      sleep(1);
+      usleep(300);
       kolejka_send(msqid_ci, &radio_msg, sizeof(radio_msg.data));
     }
 
     //sprawdzenie czy nie podstawia nie nowy samolot
-    if(sem_nowait(semid, CHECKS) != 0) {
-      kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY);
+    if(sem_nowait(semid, CHECKS) != -1) {
+      kolejka_recv(msqid, &radio_msg, sizeof(radio_msg.data), RADIO_READY, 'O');
       aktualna_masa_bagazu = radio_msg.data;
+      //sleep(2);
       printf("Odprawa: Nowa masa bagazu -> %d\n", aktualna_masa_bagazu);
       fflush(stdout);
     }

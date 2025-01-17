@@ -27,9 +27,9 @@ int kolejka_send(int msqid, void *msg, size_t len){
   return result; //to moze jest zbedne
 }
 
-int kolejka_recv(int msqid, void *msg, size_t len, long int type){
+int kolejka_recv(int msqid, void *msg, size_t len, long int type, char id){
   int result = msgrcv(msqid, msg, len, type, 0);
-  if (result == -1) perror("kominikat.c | kolejka_recv | ");
+  if (result == -1) {printf("kolejak err -> %c", id); perror("kominikat.c | kolejka_recv | ");}
   return result;
 }
 

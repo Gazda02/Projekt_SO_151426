@@ -3,7 +3,7 @@
 //semafory
 #define SEM_NUM 4
 #define CHECKS 3
-#define TO_SEAT 2
+#define COME_BACK 2
 #define TO_STAIRS 1
 #define TO_PLANE 0
 
