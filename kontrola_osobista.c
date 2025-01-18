@@ -2,10 +2,14 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <signal.h>
 
 #include "komunikat.h"
 #include "semafor.h"
 #include "params.h"
+
+#define POST_NUMBER 3
 
 typedef struct {
   long pid;
@@ -20,26 +24,38 @@ void check_waiting(Waiting *waiting_pas);
 void make_waiting(P_Search *pas, Waiting *waiting_pas);
 void send_everyone_back(int post_num);
 void send_waiting_back(Waiting *waiting_pas);
+void signal2();
 
-int msqid, is_new_plane, is_airport_open, size;
+int msqid, size;
+bool is_new_plane, is_airport_open;
 
 
 int main(){
-  int semid, posts[3];
-  pthread_t security[3];
+  int semid, posts[POST_NUMBER], i;
+  pthread_t security[POST_NUMBER];
   Radio radio_null;
 
+  //obsluga sygnalow
+  struct sigaction sig2;
+  sig2.sa_handler = signal2;
+  sig2.sa_flags = SA_RESTART;
+
+  sigaction(SIGUSR2, &sig2, NULL);
+
+  //inicjalizacja IPC
   msqid = kolejka_init(get_key('K'), IPC_CREAT | 0600);
   semid = sem_init(get_key('S'), SEM_NUM, IPC_CREAT | 0600);
 
+  //ustawienie zmiennych
   size = 3 * sizeof(int);
-  is_new_plane = 0;
-  is_airport_open = 1;
+  is_new_plane = false;
+  is_airport_open = true;
 
+  //czeka na pierwszy samolot
   kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2);
   sleep(1);
 
-  for(int i = 0; i < 3; i++) {
+  for(i = 0; i < POST_NUMBER; i++) {
     posts[i] = i;
     if(pthread_create(&security[i], NULL, security_check, (void *)&posts[i])) {
       perror("kontrola_osobista.c | pthread_create | ");
@@ -47,19 +63,23 @@ int main(){
     }
   }
 
-  while(is_airport_open) {
+  while(is_airport_open){
     if(sem_nowait(semid, CHECKS) != -1) {
-      is_new_plane = 1;
+      is_new_plane = true;
       sleep(3);
 
-      for(int i = 0; i < 3; i++) send_everyone_back(i);
+      for(i = 0; i < POST_NUMBER; i++) send_everyone_back(i);
 
-      kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2);
-      is_new_plane = 0;
+      if(kolejka_recv(msqid, &radio_null, sizeof(radio_null.data), RADIO_READY2) == -1) printf("Kontrola: Error\n");
+      is_new_plane = false;
       //printf("Kontrola osobista: Restart\n");
       fflush(stdout);
     }
   }
+
+  for(i = 0; i < POST_NUMBER; i++) pthread_join(security[i], NULL);
+  printf("Kontrola osobista: Koniec pracy\n");
+  exit(0);
 }
 
 void *security_check(void *arg) {
@@ -174,6 +194,8 @@ void *security_check(void *arg) {
       if(waiting_pas.pid != 0) send_waiting_back(&waiting_pas);
     }
   }
+
+  if(waiting_pas.pid != 0) send_waiting_back(&waiting_pas);
   return NULL;
 }
 
@@ -221,4 +243,8 @@ void send_waiting_back(Waiting *waiting_pas) {
   radio_msg.data = -1;
   kolejka_send(msqid, &radio_msg, sizeof(radio_msg.data));
   waiting_pas->pid = 0;
+}
+
+void signal2() {
+  is_airport_open = false;
 }

@@ -10,18 +10,20 @@
 #include "params.h"
 
 void init_airport(int* pas, int* pasVip, int* plane, int* planesSize);
-void thread_pas(int pasCount, char* isVip);
-void thread_plane(int planeCount, int planesSize);
-void thread_dispatcher();
-void thread_check();
-void thread_check2();
+void process_pas(int pasCount, char* isVip);
+void process_dispatcher(int plane_count, int planes_size);
+void process_plane(int plane_count, int planes_size);
+void process_check();
+void process_check2();
+void soft_finish();
 void koniec(int signal);
 
-int msgID, msqid_ci, shmID, semID;
+int msgID, msqid_ci, shmID, semID, ilosc_pasazerow, ilosc_VIP;
+pid_t dispatcher_pid, *pas_pid;
 
 int main(){
   //inicjalizacja zmiennych
-  int ilosc_pasazerow, ilosc_samolotow, ilosc_VIP, ilosc_miejsc, i;
+  int ilosc_samolotow, ilosc_miejsc, i;
   int *shm;
   char isVip;
 
@@ -32,12 +34,26 @@ int main(){
   sigaction(SIGINT, &action, NULL);
   sigaction(SIGTERM, &action, NULL);
 
+  //soft finish
+  sigset_t block_mask;
+  sigemptyset(&block_mask);
+  sigaddset(&block_mask, SIGINT);
+  sigaddset(&block_mask, SIGTERM);
+
+  struct sigaction sig0;
+  sig0.sa_handler = soft_finish;
+  sig0.sa_mask = block_mask;
+  sig0.sa_flags = 0;
+  sigaction(0, &sig0, NULL);
+
   //pobieranie parametrów startowych
   //init_airport(&ilosc_pasazerow, &ilosc_VIP, &ilosc_samolotow, &ilosc_miejsc);
-  ilosc_pasazerow = 12;
-  ilosc_VIP = 0;
-  ilosc_samolotow = 2;
-  ilosc_miejsc = 5;
+  ilosc_pasazerow = 100;
+  ilosc_VIP = 10;
+  ilosc_samolotow = 5;
+  ilosc_miejsc = 10;
+
+  pas_pid = (pid_t *)malloc((ilosc_pasazerow + ilosc_VIP) * sizeof(pid_t));
 
   //inicjalizacja IPC
   msgID = kolejka_init(get_key('K'), IPC_CREAT | IPC_EXCL | 0600);
@@ -53,16 +69,18 @@ int main(){
 
   //start procesów
   isVip = '0';
-  thread_pas(ilosc_pasazerow, &isVip);
+  process_pas(ilosc_pasazerow, &isVip);
   isVip = '1';
-  thread_pas(ilosc_VIP, &isVip);
-  thread_plane(ilosc_samolotow, ilosc_miejsc);
-  thread_dispatcher();
-  thread_check();
-  thread_check2();
+  process_pas(ilosc_VIP, &isVip);
+  //process_plane(ilosc_samolotow, ilosc_miejsc);
+  process_dispatcher(ilosc_samolotow, ilosc_miejsc);
+  //process_check();
+  //process_check2();
 
-  for(i=0; i<ilosc_pasazerow+ilosc_VIP; i++) wait(NULL);
-  koniec(0);
+  //czeka na koniec dyspozytora
+  waitpid(dispatcher_pid, NULL, 0);
+  //for(i=0; i<ilosc_pasazerow+ilosc_VIP; i++) wait(NULL);
+  kill(getpid(), 0);
 }
 
 void init_airport(int *pas, int *pasVip, int *plane, int *planesSize){
@@ -80,9 +98,12 @@ void init_airport(int *pas, int *pasVip, int *plane, int *planesSize){
   scanf("%i", planesSize);
 }
 
-void thread_pas(int pasCount, char* isVip){
+void process_pas(int pasCount, char* isVip){
+  pid_t pid;
+
   for(int i=0; i < pasCount; i++){
-    switch(fork()){
+    pid = fork();
+    switch(pid){
       case -1:
         perror("start.c | Pasazerowie | fork | ");
         exit(1);
@@ -94,93 +115,58 @@ void thread_pas(int pasCount, char* isVip){
         }
 
       default:
-        NULL;
+        pas_pid[i] = pid;
     }
   }
 }
 
-void thread_plane(int planeCount, int planesSize){
-  char planeSize[11];
-  char planeNum[11];
-  char shmSize[12];
-  sprintf(planeSize, "%d", planesSize);
-  sprintf(shmSize, "%d", planesSize*planeCount+1);
+void process_dispatcher(int plane_count, int planes_size){
+  char plane_num_c[11];
+  char planes_size_c[11];
+  sprintf(plane_num_c, "%d", plane_count);
+  sprintf(planes_size_c, "%d", planes_size);
 
-  for(int i=0; i < planeCount; i++){
-    switch(fork()){
-      case -1:
-        perror("start.c | Samoloty | fork | ");
-        exit(1);
-
-      case 0:
-        sprintf(planeNum, "%d", i);
-        if(execl("./kapitan", "kapitan", planeNum, planeSize, shmSize, NULL) == -1){
-          perror("start.c | Samoloty | execl | ");
-          exit(2);
-        }
-
-      default:
-        NULL;
-    }
-  }
-}
-
-void thread_dispatcher(){
-  switch(fork()){
+  dispatcher_pid = fork();
+  switch(dispatcher_pid){
     case -1:
       perror("start.c | Dyspozytor | fork | ");
       exit(1);
 
     case 0:
-      if (execl("./dyspozytor", "dyspozytor", NULL) == -1) {
+      if (execl("./dyspozytor", "dyspozytor", plane_num_c, planes_size_c, NULL) == -1) {
           perror("start.c | Dyspozytor | execl | ");
           exit(2);
         }
 
     default:
-        NULL;
-  }
-}
-
-void thread_check(){
-  switch(fork()){
-    case -1:
-      perror("start.c | Odprawa | fork | ");
-      exit(1);
-
-    case 0:
-      if (execl("./odprawa", "odprawa", NULL) == -1){
-        perror("start.c | Odprawa | execl | ");
-        exit(2);
-      }
-
-  	default:
-		NULL;
-  }
-}
-
-void thread_check2(){
-  switch(fork()){
-    case -1:
-      perror("start.c | Kontrola osobista | fork | ");
-      exit(1);
-
-    case 0:
-      if (execl("./kontrola_osobista", "kontrola_osobista", NULL) == -1){
-        perror("start.c | Kontrola osobista | execl | ");
-        exit(2);
-      }
-
-  	default:
-		NULL;
+      printf("Start: Dyspozytor posiada PID -> %d\n", dispatcher_pid);
+      fflush(stdout);
   }
 }
 
 void koniec(int sig){
-  kill(0, sig);
+  printf("Start: Koniec z sygnalem %d\n", sig);
+
+  if(sig != 0) {
+    kill(dispatcher_pid, SIGUSR2);
+    waitpid(dispatcher_pid, NULL, 0);
+  }
+
+  for(int i=0; i<ilosc_pasazerow+ilosc_VIP; i++) kill(pas_pid[i], SIGINT);
   kolejka_remove(msgID);
   kolejka_remove(msqid_ci);
   pamiec_remove(shmID);
   sem_remove(semID, SEM_NUM);
   exit(sig);
+}
+
+void soft_finish() {
+  printf("Start: KONIEC");
+
+  for(int i=0; i<ilosc_pasazerow+ilosc_VIP; i++) kill(pas_pid[i], SIGINT);
+  kolejka_remove(msgID);
+  kolejka_remove(msqid_ci);
+  pamiec_remove(shmID);
+  sem_remove(semID, SEM_NUM);
+  exit(0);
 }

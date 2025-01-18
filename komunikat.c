@@ -16,7 +16,7 @@ int kolejka_init(key_t key, int flag){
 
   if (msgid == -1){
     perror("kominikat.c | kolejka_init | ");
-    exit(2);
+    exit(3);
   }
   return msgid;
 }
@@ -29,7 +29,7 @@ int kolejka_send(int msqid, void *msg, size_t len){
 
 int kolejka_recv(int msqid, void *msg, size_t len, long int type){
   int result = msgrcv(msqid, msg, len, type, 0);
-  if (result == -1) perror("kominikat.c | kolejka_recv | ");
+  if (result == -1 && errno != EINTR) perror("kominikat.c | kolejka_recv | ");
   return result;
 }
 

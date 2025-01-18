@@ -2,10 +2,12 @@
 #define KOMUNIKAT_H
 
 #include <sys/msg.h>
+#include <errno.h>
 //samolot-obsluga
 #define RADIO_TAXIING 101
-#define RADIO_READY 102
-#define RADIO_READY2 103
+#define RADIO_COPY 102
+#define RADIO_READY 103
+#define RADIO_READY2 104
 #define RADIO_TAKEOFF 105
 
 #define RADIO_WAIT 407
@@ -14,6 +16,11 @@ typedef struct{
   long radioType;
   int data;
 } Radio;
+
+typedef struct{
+  long radioType;
+  pid_t pid;
+} Radio2;
 
 //samolot-pasazer
 #define GET_SEAT 30
