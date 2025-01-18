@@ -21,7 +21,6 @@ void signal2();
 pid_t check_pid, check2_pid, current_pid, *planes_pid;
 int planes_size, planes_count, shm_size;
 
-//TODO obsługa sygnałów
 int main(int argc, char *argv[]){
   int msgid, semid, shmid, pas_i, *shm;
   Radio radio_msg;
